@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e35483a315f3f4810b7b5fa1c817e4db, type: 3}
+  m_Name: Pickerelweed
+  m_EditorClassIdentifier: Assembly-CSharp::Plant
+  title: Pickerelweed
+  description: 'Pontederia cordata, common name pickerelweed or pickerel weed, is
+    a monocotyledonous aquatic plant native to the American continents. It grows
+    in a variety of wetlands, including pond and lake margins across an extremely
+    large range from eastern Canada south to Argentina. '
+  audio: {fileID: 8300000, guid: 7adbd53365a4248ccb641da451c841ad, type: 3}
+  images:
+  - {fileID: 21300000, guid: a1155c4e5e37340b19f0dabfab342e72, type: 3}
+  - {fileID: 21300000, guid: af9d507ef32c94ffd96d1eb8e4ae8b74, type: 3}
