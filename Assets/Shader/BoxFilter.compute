@@ -1,0 +1,30 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Input;
+RWTexture2D<float4> Result;
+int Width;
+int Height;
+int K;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float4 sum = float4(0,0,0,0);
+    uint count = 0;
+    for ( uint i = max(0, (int)id.x-K); i <= min(Width-1, id.x+K); ++i )
+    {
+        for ( uint j = max(0, (int)id.y-K); j <= min(Height-1, id.y+K); ++j )
+        {
+            sum += Input[uint2(i, j)];
+            ++count;
+        }
+    }
+    int x = Width - id.x;
+    int y = Height - id.y;
+    uint2 xy = uint2(x,y);
+
+    Result[id.xy] = sum / count;
+}
