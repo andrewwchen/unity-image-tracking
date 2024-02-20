@@ -9,8 +9,11 @@ EditorBuildSettings:
     path: Assets/Scenes/MainScene.unity
     guid: 6bdce89659816455b9f906fc62d19910
   - enabled: 0
-    path: Assets/Scenes/ARTestFlag.unity
-    guid: 98464bfbf96bc424abe981a73b844397
+    path: 
+    guid: 00000000000000000000000000000000
+  - enabled: 0
+    path: Assets/Scenes/TestScene.unity
+    guid: d4cc834763bf44dd7a7a9c8f73c3a8d5
   m_configObjects:
     Unity.XR.WindowsMR.Settings: {fileID: 11400000, guid: 744b813df90924c169af73489b8325de,
       type: 2}
