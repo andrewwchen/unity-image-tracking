@@ -9,8 +9,6 @@ using TMPro;
 [RequireComponent(typeof(ARTrackedImageManager))]
 public class ForestSceneManager : MonoBehaviour
 {
-	// [SerializeField] private string[] demoImageNames;
-	// [SerializeField] private Transform[] demoImageTransforms;
 
     [SerializeField] private ForestScene[] forestScenes;
 	[Tooltip("The ForestScene will be positioned based on the most recently added tracked image or the most recently tracked image within maxRetrackDistance in the camera view")]
@@ -19,12 +17,29 @@ public class ForestSceneManager : MonoBehaviour
 	[SerializeField] private TMP_Text debugText;
 
 	private ARTrackedImageManager arTrackedImageManager;
+
+	// Dictionary<image name : ForestScene>
+	// maps image target names to the corresponding Forest Scene
 	private Dictionary<string, ForestScene> imageToScene = new Dictionary<string, ForestScene>();
 
+	// Dictionary<image name : ARTrackedImage>
+	// contains every image target that ARFoundation is currently tracking
+	// maps image target name to the corresponding ARTrackedImage object
+	// image targets can have a TrackingState of Limited or Tracking
 	private Dictionary<string, ARTrackedImage> trackedImages = new Dictionary<string, ARTrackedImage>();
+
+	// contains every image target that ARFoundation is currently tracking with the TrackingState of Tracking
+	// ordered by time last tracked
 	private List<string> trackedImagesOrder = new List<string>();
+
+	// contains every image target that ARFoundation is currently tracking with the TrackingState of Limited
+	// ordered by time last tracked
 	private List<string> limitedImagesOrder = new List<string>();
+
+	// the name of the image target that is being used to position and orient the currentForestScene 
 	private string currentImageName = "";
+
+	// the ForestScene currently being displayed which corresponds to currentImageName
 	private ForestScene currentForestScene;
 
 
@@ -39,7 +54,10 @@ public class ForestSceneManager : MonoBehaviour
     {
 		foreach (ForestScene fs in forestScenes)
 		{
+			// hide all ForestScenes at the start
 			fs.gameObject.SetActive(false);
+
+			// associate each image target with their corresponding scene
 			foreach (string img in fs.imageToTransform.Keys)
 			{
 				imageToScene[img] = fs;
@@ -51,6 +69,7 @@ public class ForestSceneManager : MonoBehaviour
 
     void OnDisable() => arTrackedImageManager.trackedImagesChanged -= OnChanged;
 
+	// event handler for updating the tracking status of every image target
 	void OnChanged(ARTrackedImagesChangedEventArgs eventArgs)
 	{
 		foreach (ARTrackedImage newImage in eventArgs.added)
@@ -69,6 +88,7 @@ public class ForestSceneManager : MonoBehaviour
 		}
 	}
 
+	// function bound to the OnChanged event handler
 	private void UpdateImages(ARTrackedImage image, bool retrack=false)
 	{
 		string imageName = image.referenceImage.name;
@@ -97,6 +117,7 @@ public class ForestSceneManager : MonoBehaviour
 		}
 	}
 
+	// refreshes the tracking status of tracked images currently in the center of the viewport within maxRetrackDistance
 	private void UpdateViewedImages()
     {
 		// test if the camera is currently pointed at a tracked image
@@ -131,17 +152,18 @@ public class ForestSceneManager : MonoBehaviour
 
 	private void Update()
 	{
+		// refresh the tracking status of images in the center of the viewport
 		UpdateViewedImages();
 
 		// determine the name and transform of the currently tracked image
 		string imageName;
 		Transform imageTransform;
-		if (trackedImagesOrder.Count > 0) // if actively tracking multiple images, use those images
+		if (trackedImagesOrder.Count > 0) // if we are actively tracking at least one image, use the most recently tracked image
 		{
 			imageName = trackedImagesOrder.Last();
 			imageTransform = trackedImages[imageName].transform;
 		}
-		else if (limitedImagesOrder.Count > 0) // if not activately tracking an image, use the most recently tracked image
+		else if (limitedImagesOrder.Count > 0) // if we are not actively tracking an image, use the most recently tracked image
 		{
 			imageName = limitedImagesOrder.Last();
 			imageTransform = trackedImages[imageName].transform;
@@ -155,12 +177,12 @@ public class ForestSceneManager : MonoBehaviour
 			return;
 		}
 
-		// check if the current image is too far, in which case hide the forest scene
+		// TODO: check if the current image is too far, in which case hide the forest scene
 		if (false)
         {
 			currentForestScene.gameObject.SetActive(false);
 		}
-		// otherwise only perform changes if a different image is tracked since last update
+		// otherwise change the Forest Scene position, orientation, and/or the Forest Scene itself if a different image is being tracked since the last update
 		else if (currentImageName != imageName)
         {
 			currentImageName = imageName;
@@ -178,7 +200,7 @@ public class ForestSceneManager : MonoBehaviour
 				currentForestScene.gameObject.SetActive(true);
 			}
 
-			// position and rotation for the AR image marker and its placeholder position within the current scene
+			// set the position and rotation of the forest scene relative to the currentImage's corresponding placeholder's location within the forestscene
 			Quaternion sceneRotation = currentForestScene.imageToTransform[imageName].localRotation;
 			Quaternion worldRotation = imageTransform.rotation;
 			Vector3 scenePosition = currentForestScene.imageToTransform[imageName].localPosition;
@@ -193,69 +215,10 @@ public class ForestSceneManager : MonoBehaviour
 			currentForestScene.transform.parent = imageTransform;
 		}
 
+		// display debug info in the text box
 		if (debugText != null)
 		{
 			debugText.text = "Tracked Images: " + string.Join(", ", trackedImagesOrder) + "\n Limited Images: " + string.Join(", ", limitedImagesOrder) + "\n Pointed Images: " + string.Join(", ", pointedImages) + "\n Current Image: " + imageName;
 		}
-
-		/*
-		Dictionary<string, Transform> currentImages;
-		if (trackedImages.Count > 0) // if actively tracking multiple images, use those images
-		{
-			currentImages = trackedImages;
-		}
-		else if (limitedImages.Count > 0) // if not activately tracking an image, use the most recently tracked image
-		{
-			currentImages = new Dictionary<string, Transform>() { { limitedImagesOrder[-1], limitedImages[limitedImagesOrder[-1]] } };
-		}
-		else
-		{
-			currentForestScene.gameObject.SetActive(false);
-			return;
-		}
-
-		// average calculated position, up, and forward vectors for the scene's origin in world space
-		Vector3 averagePosition = Vector3.zero;
-		Vector3 averageForward = Vector3.zero;
-		Vector3 averageUp = Vector3.zero;
-		int numImages = 0;
-		foreach (string imageName in currentImages.Keys)
-		{
-			if (!currentForestScene.imageToTransform.ContainsKey(imageName))
-			{
-				continue;
-			}
-
-			numImages += 1;
-			// position and rotation for the AR image marker and its placeholder position within the current scene
-			Quaternion sceneRotation = currentForestScene.imageToTransform[imageName].localRotation;
-			Quaternion worldRotation = currentImages[imageName].transform.rotation;
-			Vector3 scenePosition = currentForestScene.imageToTransform[imageName].localPosition;
-			Vector3 worldPosition = currentImages[imageName].transform.position;
-
-			Quaternion sceneToWorldRotation = worldRotation * Quaternion.Inverse(sceneRotation);
-			averageForward += (sceneToWorldRotation * Vector3.forward).normalized;
-			averageUp += (sceneToWorldRotation * Vector3.up).normalized;
-
-			Vector3 rotatedScenePosition = sceneToWorldRotation * scenePosition;
-			averagePosition += worldPosition - rotatedScenePosition;
-		}
-
-		if (numImages > 0)
-		{
-			averagePosition = averagePosition / numImages;
-			averageForward = averageForward.normalized;
-			averageUp = averageUp.normalized;
-			Quaternion averageRotation = Quaternion.LookRotation(averageForward, averageUp);
-			// currentForestScene.MoveTo(averagePosition, averageRotation);
-			currentForestScene.transform.position = averagePosition;
-			currentForestScene.transform.rotation = averageRotation;
-			currentForestScene.gameObject.SetActive(true);
-		}
-		else
-		{
-			currentForestScene.gameObject.SetActive(false);
-		}
-		*/
 	}
 }

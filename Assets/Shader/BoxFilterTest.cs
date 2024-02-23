@@ -9,7 +9,8 @@ public class BoxFilterTest : MonoBehaviour
     [SerializeField] private int boxFilterKernel = 5;
     [SerializeField] private bool useSecondaryCamera = false;
     [SerializeField] private ComputeShader rgba2Gray;
-    [SerializeField] private ComputeShader boxFilter;
+    [SerializeField] private ComputeShader horizontalPrefix;
+    [SerializeField] private ComputeShader verticalPrefix;
     [SerializeField] private ComputeShader gray2Rgba;
     [SerializeField] private Camera secondaryCamera;
     [SerializeField] private Texture2D markerImg;
@@ -20,8 +21,9 @@ public class BoxFilterTest : MonoBehaviour
     private RenderTexture grayMarkerRT;
     private RenderTexture rgbaRT;
     private RenderTexture grayRT;
-    private RenderTexture grayBoxRT;
-    private RenderTexture rgbaBoxRT;
+    private RenderTexture horizontalPrefixRT;
+    private RenderTexture satRT;
+    private RenderTexture rgbaSatRT;
     private int width;
     private int height;
     private int depth;
@@ -50,13 +52,17 @@ public class BoxFilterTest : MonoBehaviour
         grayRT.enableRandomWrite = true;
         grayRT.Create();
 
-        grayBoxRT = new RenderTexture(width, height, depth);
-        grayBoxRT.enableRandomWrite = true;
-        grayBoxRT.Create();
+        horizontalPrefixRT = new RenderTexture(width, height, depth);
+        horizontalPrefixRT.enableRandomWrite = true;
+        horizontalPrefixRT.Create();
 
-        rgbaBoxRT = new RenderTexture(width, height, depth);
-        rgbaBoxRT.enableRandomWrite = true;
-        rgbaBoxRT.Create();
+        satRT = new RenderTexture(width, height, depth);
+        satRT.enableRandomWrite = true;
+        satRT.Create();
+
+        rgbaSatRT = new RenderTexture(width, height, depth);
+        rgbaSatRT.enableRandomWrite = true;
+        rgbaSatRT.Create();
 
 
         if (useSecondaryCamera)
@@ -100,18 +106,21 @@ public class BoxFilterTest : MonoBehaviour
         rgba2Gray.SetTexture(0, "Result", grayRT);
         rgba2Gray.Dispatch(0, width, height, 1);
         
-        boxFilter.SetTexture(0, "Input", grayRT);
-        boxFilter.SetTexture(0, "Result", grayBoxRT);
-        boxFilter.SetInt("Width", width);
-        boxFilter.SetInt("Height", height);
-        boxFilter.SetInt("K", boxFilterKernel);
-        boxFilter.Dispatch(0, width, height, 1);
+        horizontalPrefix.SetTexture(0, "Input", grayRT);
+        horizontalPrefix.SetTexture(0, "Result", horizontalPrefixRT);
+        horizontalPrefix.SetInt("Width", width);
+        horizontalPrefix.Dispatch(0, width, height, 1);
+
+        verticalPrefix.SetTexture(0, "Input", horizontalPrefixRT);
+        verticalPrefix.SetTexture(0, "Result", satRT);
+        verticalPrefix.SetInt("Height", height);
+        verticalPrefix.Dispatch(0, width, height, 1);
         
-        gray2Rgba.SetTexture(0, "Input", grayBoxRT);
-        gray2Rgba.SetTexture(0, "Result", rgbaBoxRT);
+        gray2Rgba.SetTexture(0, "Input", satRT);
+        gray2Rgba.SetTexture(0, "Result", rgbaSatRT);
         gray2Rgba.Dispatch(0, width, height, 1);
 
-        Graphics.Blit(rgbaBoxRT, destination);
+        Graphics.Blit(rgbaSatRT, destination);
         // Graphics.Blit(grayMarkerRT, destination);
     }
 
