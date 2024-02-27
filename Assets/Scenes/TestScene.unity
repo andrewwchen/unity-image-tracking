@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 422218014}
-  m_IndirectSpecularColor: {r: 0.4439403, g: 0.4931519, b: 0.5722083, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -2442,7 +2442,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 489288331}
   m_HandleRect: {fileID: 489288330}
   m_Direction: 0
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -2648,6 +2648,59 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 953856388}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &965753167
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 965753169}
+  - component: {fileID: 965753168}
+  m_Layer: 0
+  m_Name: MarkersToKeypoints
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &965753168
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 965753167}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d1103dfe4d1b0440aaa9abb3c42e04b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  markers: {fileID: 11400000, guid: 56c4f2ac88c6e5844bb87f81992efcfd, type: 2}
+  keypoints2: []
+  rgba2Gray: {fileID: 7200000, guid: 71ccb4b036b5449618fecf989580eb7a, type: 3}
+  blurShader: {fileID: 7200000, guid: e25cd51ea05f38744a33c7b1fc82a8c5, type: 3}
+  normalizeShader: {fileID: 7200000, guid: 1f77b359ac7b666459613c59d3e88f36, type: 3}
+  marker2Keypoints: {fileID: 7200000, guid: 397b86d1256f22a49b55be0150669163, type: 3}
+  numScales: 5
+  theshold: 0.1
+  radius: 1
+--- !u!4 &965753169
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 965753167}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3.636, y: 1.071, z: -9.49}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 12
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &978176667
 GameObject:
   m_ObjectHideFlags: 0
@@ -3379,7 +3432,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1354141925}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ff6da5ef4d57242038520d9323938608, type: 3}
   m_Name: 
@@ -3387,7 +3440,8 @@ MonoBehaviour:
   boxFilterKernel: 5
   useSecondaryCamera: 1
   rgba2Gray: {fileID: 7200000, guid: 71ccb4b036b5449618fecf989580eb7a, type: 3}
-  boxFilter: {fileID: 7200000, guid: c8a6c69fe723f486fa35add2213cb48d, type: 3}
+  horizontalPrefix: {fileID: 0}
+  verticalPrefix: {fileID: 0}
   gray2Rgba: {fileID: 7200000, guid: e5a7760cfc1dc4313abb44f9cdffd9a6, type: 3}
   secondaryCamera: {fileID: 769718090}
   markerImg: {fileID: 2800000, guid: a172559cccd40488097352fa0519352f, type: 3}

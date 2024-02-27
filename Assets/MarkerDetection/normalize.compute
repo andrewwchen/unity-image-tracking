@@ -1,0 +1,16 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float> Input;
+RWTexture2D<float> Result;
+float Min;
+float Max;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float g = Input[id.xy];
+    Result[id.xy] = (g-Min)/(Max-Min);
+}
