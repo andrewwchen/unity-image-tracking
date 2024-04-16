@@ -1,0 +1,49 @@
+#pragma kernel CSMain
+#define PI 3.1415926538
+
+int Radius;
+
+RWTexture2D<float> Source;
+RWTexture2D<float2> Input;
+RWTexture2D<float3> Result;
+RWTexture2D<float3> Debug;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float2 I_p = Input[id.xy];
+    float S_p = Source[id.xy];
+
+    // ignore non keypoints
+    if (I_p.x == 0 && I_p.y == 0) {
+        Result[id.xy] = float3(0,0,0);
+        Debug[id.xy] = float3(S_p,S_p,S_p);
+        return;
+    }
+
+    float m01 = 0;
+    float m10 = 0;
+    float m00 = 0;
+    for (int c=-Radius; c < Radius; c++) {
+        for (int r=-Radius; r < Radius; r++) {
+            if (r*r + c*c <= Radius*Radius) {
+                float S_mp = Source[uint2(((int)id.x)+c, ((int)id.y)+r)];
+                m01 += r * S_mp;
+                m10 += c * S_mp;
+                m00 += S_mp;
+            }
+        }
+    }
+
+    float o = atan2(m01 / m00, m10 / m00); // -pi to pi
+    
+    int end_x = int(id.x + cos(o) * Radius);
+    int end_y = int(id.y + sin(o) * Radius);
+    
+    Debug[int2(end_x, end_y)] = float3(1.0,0,0);
+
+    o = PI + o; // 0 to pi
+    o = o/PI; // 0 to 1
+    Result[id.xy] = float3(I_p.x,I_p.y,o);
+    Debug[id.xy] = float3(0,0,o);
+}

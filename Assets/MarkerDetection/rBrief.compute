@@ -1,0 +1,74 @@
+#pragma kernel CSMain
+#define PI 3.1415926538
+
+shared RWStructuredBuffer<int> TestsX;
+shared RWStructuredBuffer<int> TestsY;
+uint TestsN;
+
+RWTexture2D<float> Source;
+RWTexture2D<float2> Input;
+RWTexture2D<float3> Result;
+RWTexture2D<float3> Debug;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float2 I_p = Input[id.xy];
+    float S_p = Source[id.xy];
+
+
+
+    // ignore non keypoints
+    if (I_p.x == 0 && I_p.y == 0) {
+        Result[id.xy] = float3(0,0,0);
+        Debug[id.xy] = float3(S_p,S_p,S_p);
+        return;
+    }
+    /*
+    uint mrows2 = (mrows - 1) >> 1;
+    uint mcols2 = (mcols - 1) >> 1;
+
+    int c0 = id.x;
+    int r0 = id.y;
+    float m01 = 0;
+    float m10 = 0;
+    for (uint r=0; r < mrows; r++) {
+        float m01_temp = 0;
+        for (uint c=0; c < mcols; c++) {
+            if (mask[r + c * mrows] == 1) {
+                float S_mp = Source[uint2(r0+r, c0+c)];
+                m10 = m10 + S_mp*(c-mcols2);
+                m01_temp = m01_temp + S_mp;
+            }
+        }
+        m01 = m01 + m01_temp*(r-mrows2);
+    }
+    */
+
+    int radius = 8;
+    float m01 = 0;
+    float m10 = 0;
+    float m00 = 0;
+    for (int c=-radius; c < radius; c++) {
+        for (int r=-radius; r < radius; r++) {
+            if (r*r + c*c <= radius*radius) {
+                float S_mp = Source[uint2(((int)id.x)+c, ((int)id.y)+r)];
+                m01 += r * S_mp;
+                m10 += c * S_mp;
+                m00 += S_mp;
+            }
+        }
+    }
+
+    float o = atan2(m01 / m00, m10 / m00); // -pi to pi
+    
+    int end_x = int(id.x + cos(o) * radius);
+    int end_y = int(id.y + sin(o) * radius);
+    
+    Debug[int2(end_x, end_y)] = float3(1.0,0,0);
+
+    o = PI + o; // 0 to pi
+    o = o/PI; // 0 to 1
+    Result[id.xy] = float3(I_p.x,I_p.y,o);
+    Debug[id.xy] = float3(0,0,o);
+}

@@ -7,7 +7,8 @@ RWTexture2D<float> Input;
 float Threshold;
 uint Width;
 uint Height;
-RWTexture2D<float4> Result;
+RWTexture2D<float2> Result;
+RWTexture2D<float3> Debug;
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
@@ -16,7 +17,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     
     // ignore points on the edge
     if (id.x < 3 || id.y < 3 || id.x >= Width-3 || id.y >= Height-3) {
-        Result[id.xy] = float4(I_p,I_p,I_p,1);
+        Debug[id.xy] = float3(I_p,I_p,I_p);
+        Result[id.xy] = float2(0,0);
         return;
     }
 
@@ -52,36 +54,44 @@ void CSMain (uint3 id : SV_DispatchThreadID)
             Dir_n[i1] = 0;
         }
     }
-    
+
+    int cornerness = 0;
+    // count the cornerness of the point
+    for (uint k = 0; k < 16; k++) {
+        cornerness += Dir_n[k];
+    }
+
     // check if we have 12 contiguous points above or below the threshold
     int count = 0;
+    int max_count = 0;
+    int min_count = 0;
     for (uint i2 = 4; i2 < 16; i2++) {
-        if (I_n[i2] > I_p + Threshold) {
-            count++;
-        } else if (I_n[i2] < I_p - Threshold) {
-            count--;
-        }
+        count += Dir_n[i2];
     }
-
     for (uint i = 0; i < 16; i++) {
         uint j = (i + 4) - (16 * ((i + 4)/ 16)); // mod
-
-        if (I_n[i] > I_p + Threshold) {
-            count++;
-        } else if (I_n[i] < I_p - Threshold) {
-            count--;
+        
+        count += Dir_n[i];
+        count -= Dir_n[j];
+        if (count > max_count) {
+            max_count = count;
         }
-
-        if (I_n[j] > I_p + Threshold) {
-            count--;
-        } else if (I_n[j] < I_p - Threshold) {
-            count++;
-        }
-        if (count == 12 || count == -12) {
-            Result[id.xy] = float4(1,0,0,1);
-            return;
+        else if (count < min_count) {
+            min_count = count;
         }
     }
 
-    Result[id.xy] = float4(I_p,I_p,I_p,1);
+    if (max_count >= 12) {
+        Debug[id.xy] = float3(float(cornerness)/16.0,0,0);
+        Result[id.xy] = float2((cornerness)/16.0,0);
+        return;
+    }
+    if (min_count <= -12) {
+        Debug[id.xy] = float3(0,float(cornerness)/-16.0,0);
+        Result[id.xy] = float2(0,(cornerness)/-16.0);
+        return;
+    }
+
+    Debug[id.xy] = float3(I_p,I_p,I_p);
+    Result[id.xy] = float2(0,0);
 }

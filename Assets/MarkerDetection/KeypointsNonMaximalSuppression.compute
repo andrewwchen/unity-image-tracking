@@ -1,0 +1,78 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float> Source;
+RWTexture2D<float2> Input;
+RWTexture2D<float2> Result;
+RWTexture2D<float3> Debug;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float2 I_p = Input[id.xy];
+    float S_p = Source[id.xy];
+
+    // ignore non keypoints
+    if (I_p.x == 0 && I_p.y == 0) {
+        Result[id.xy] = I_p;
+        Debug[id.xy] = float3(S_p,S_p,S_p);
+        return;
+    }
+
+    // Get cornerness value of neighboring points
+    float2 I_n[24];
+    I_n[0] = Input[uint2(id.x+1, id.y+1)];
+    I_n[1] = Input[uint2(id.x+1, id.y)];
+    I_n[2] = Input[uint2(id.x, id.y+1)];
+    I_n[3] = Input[uint2(id.x+1, id.y-1)];
+    
+    I_n[4] = Input[uint2(id.x, id.y+2)];
+    I_n[5] = Input[uint2(id.x+1, id.y+2)];
+    I_n[6] = Input[uint2(id.x+1, id.y-2)];
+    I_n[7] = Input[uint2(id.x+2, id.y-2)];
+    I_n[8] = Input[uint2(id.x+2, id.y-1)];
+    I_n[9] = Input[uint2(id.x+2, id.y)];
+    I_n[10] = Input[uint2(id.x+2, id.y+1)];
+    I_n[11] = Input[uint2(id.x+2, id.y+2)];
+
+    I_n[12] = Input[uint2(id.x-1, id.y+1)];
+    I_n[13] = Input[uint2(id.x, id.y-1)];
+    I_n[14] = Input[uint2(id.x-1, id.y-1)];
+    I_n[15] = Input[uint2(id.x-1, id.y)];
+
+    I_n[16] = Input[uint2(id.x, id.y-2)];
+    I_n[17] = Input[uint2(id.x-1, id.y+2)];
+    I_n[18] = Input[uint2(id.x-1, id.y-2)];
+    I_n[19] = Input[uint2(id.x-2, id.y-2)];
+    I_n[20] = Input[uint2(id.x-2, id.y-1)];
+    I_n[21] = Input[uint2(id.x-2, id.y)];
+    I_n[22] = Input[uint2(id.x-2, id.y+1)];
+    I_n[23] = Input[uint2(id.x-2, id.y+2)];
+
+    // check if any neighboring points have higher cornerness
+    for (uint i = 0; i < 12; i++) {
+        if (I_n[i].x + I_n[i].y >= I_p.x + I_p.y) {
+            Result[id.xy] = float2(0,0);
+            Debug[id.xy] = float3(S_p,S_p,S_p);
+            return;
+        }
+    }
+    for (uint i = 12; i < 24; i++) {
+        if (I_n[i].x + I_n[i].y > I_p.x + I_p.y) {
+            Result[id.xy] = float2(0,0);
+            Debug[id.xy] = float3(S_p,S_p,S_p);
+            return;
+        }
+    }
+
+    // otherwise keep the corner
+    if (I_p.x > 0.0) {
+        Result[id.xy] = I_p;
+        Debug[id.xy] = float3(I_p.x,0,0);
+    } else {
+        Result[id.xy] = I_p;
+        Debug[id.xy] = float3(0,I_p.y,0);
+    }
+}
