@@ -307,24 +307,29 @@ public class MarkersToKeypoints: MonoBehaviour
                 //keypoints[i, j] = ofps;
                 //keypoints2[(i * numScales) + j] = ofps;
 
-                // DEBUG
-                var dirPath = Application.dataPath + "/../Output Images/";
-                if (!Directory.Exists(dirPath))
+                // if on editor, save debug images
+                if (!Application.isPlaying)
                 {
-                    Directory.CreateDirectory(dirPath);
+                    // DEBUG
+                    var dirPath = Application.dataPath + "/../Output Images/";
+                    if (!Directory.Exists(dirPath))
+                    {
+                        Directory.CreateDirectory(dirPath);
+                    }
+
+                    // Save fast points image To Disk as PNG
+                    //RT2PNG(fps_debug_temp, dirPath + markers[i].name + "_" + scale.ToString() + "_fps_debug.png", width, height);
+                    //RT2PNG(fps_temp, dirPath + markers[i].name + "_" + scale.ToString() + "_fps.png", width, height);
+
+                    // Save non maximal suppressed fast points image To Disk as PNG
+                    //RT2PNG(fps_supp_debug_temp, dirPath + markers[i].name + "_" + scale.ToString() + "_fps_supp_debug.png", width, height);
+                    //RT2PNG(fps_supp_temp, dirPath + markers[i].name + "_" + scale.ToString() + "_fps_supp.png", width, height);
+
+                    // Save fast orientation points image To Disk as PNG
+                    RT2PNG(ofps_debug, dirPath + markers[i].name + "_" + scale.ToString() + "_ofps_debug.png", width, height);
+                    RT2PNG(ofps, dirPath + markers[i].name + "_" + scale.ToString() + "_ofps.png", width, height);
+
                 }
-
-                // Save fast points image To Disk as PNG
-                //RT2PNG(fps_debug_temp, dirPath + markers[i].name + "_" + scale.ToString() + "_fps_debug.png", width, height);
-                //RT2PNG(fps_temp, dirPath + markers[i].name + "_" + scale.ToString() + "_fps.png", width, height);
-
-                // Save non maximal suppressed fast points image To Disk as PNG
-                //RT2PNG(fps_supp_debug_temp, dirPath + markers[i].name + "_" + scale.ToString() + "_fps_supp_debug.png", width, height);
-                //RT2PNG(fps_supp_temp, dirPath + markers[i].name + "_" + scale.ToString() + "_fps_supp.png", width, height);
-
-                // Save fast orientation points image To Disk as PNG
-                RT2PNG(ofps_debug, dirPath + markers[i].name + "_" + scale.ToString() + "_ofps_debug.png", width, height);
-                RT2PNG(ofps, dirPath + markers[i].name + "_" + scale.ToString() + "_ofps.png", width, height);
             }
         }
         weightsBuffer.Dispose();
@@ -376,10 +381,15 @@ public class MarkersToKeypoints: MonoBehaviour
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        
         if (nextTime <= 0)
         {
             nextTime = interval-1;
+
+            // TEST
+            //RGBA2GrayRT(rgbaCameraRT, grayCameraRT, viewWidth, viewHeight);
+            ///Graphics.Blit(grayCameraRT, destination);
+            //return;
+
             SetBlurWeightsBuffer();
             SetBriefTestsBuffer();
 
@@ -427,7 +437,7 @@ public class MarkersToKeypoints: MonoBehaviour
     {
         if (arCameraBackground.material != null)
         {
-            Graphics.Blit(null, grayCameraRT, arCameraBackground.material);
+            Graphics.Blit(null, rgbaCameraRT, arCameraBackground.material);
         }
     }
 }
