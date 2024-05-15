@@ -1,0 +1,102 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float> X2;
+RWTexture2D<float> Y2;
+RWTexture2D<float> XY;
+RWTexture2D<float> Harris;
+RWStructuredBuffer<int2> KeypointsBuffer;
+
+[numthreads(1,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    int2 coord = KeypointsBuffer[id.x];
+    float x2_0 = X2[uint2(coord.x-1, coord.y-1)];
+    float x2_1 = X2[uint2(coord.x, coord.y-1)];
+    float x2_2 = X2[uint2(coord.x+1, coord.y-1)];
+    float x2_3 = X2[uint2(coord.x-1, coord.y)];
+    float x2_4 = X2[uint2(coord.x, coord.y)];
+    float x2_5 = X2[uint2(coord.x+1, coord.y)];
+    float x2_6 = X2[uint2(coord.x-1, coord.y+1)];
+    float x2_7 = X2[uint2(coord.x, coord.y+1)];
+    float x2_8 = X2[uint2(coord.x+1, coord.y+1)];
+    float sx2 = x2_0 + x2_1 + x2_2 + x2_3 + x2_4 + x2_5 + x2_6 + x2_7 + x2_8;
+
+    float y2_0 = Y2[uint2(coord.x-1, coord.y-1)];
+    float y2_1 = Y2[uint2(coord.x, coord.y-1)];
+    float y2_2 = Y2[uint2(coord.x+1, coord.y-1)];
+    float y2_3 = Y2[uint2(coord.x-1, coord.y)];
+    float y2_4 = Y2[uint2(coord.x, coord.y)];
+    float y2_5 = Y2[uint2(coord.x+1, coord.y)];
+    float y2_6 = Y2[uint2(coord.x-1, coord.y+1)];
+    float y2_7 = Y2[uint2(coord.x, coord.y+1)];
+    float y2_8 = Y2[uint2(coord.x+1, coord.y+1)];
+    float sy2 = y2_0 + y2_1 + y2_2 + y2_3 + y2_4 + y2_5 + y2_6 + y2_7 + y2_8;
+
+    float xy_0 = XY[uint2(coord.x-1, coord.y-1)];
+    float xy_1 = XY[uint2(coord.x, coord.y-1)];
+    float xy_2 = XY[uint2(coord.x+1, coord.y-1)];
+    float xy_3 = XY[uint2(coord.x-1, coord.y)];
+    float xy_4 = XY[uint2(coord.x, coord.y)];
+    float xy_5 = XY[uint2(coord.x+1, coord.y)];
+    float xy_6 = XY[uint2(coord.x-1, coord.y+1)];
+    float xy_7 = XY[uint2(coord.x, coord.y+1)];
+    float xy_8 = XY[uint2(coord.x+1, coord.y+1)];
+    float sxy = xy_0 + xy_1 + xy_2 + xy_3 + xy_4 + xy_5 + xy_6 + xy_7 + xy_8;
+
+    float det = (sx2*sy2)-(sxy*sxy);
+    float trace = sx2+sy2;
+    float k = 0.05;
+    float response = det - (k*(trace*trace));
+
+    Harris[uint2(coord.x, coord.y)] = response;
+}
+
+/*
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    int2 coord = int2(id.x, id.y);
+    float x2_0 = X2[uint2(coord.x-1, coord.y-1)];
+    float x2_1 = X2[uint2(coord.x, coord.y-1)];
+    float x2_2 = X2[uint2(coord.x+1, coord.y-1)];
+    float x2_3 = X2[uint2(coord.x-1, coord.y)];
+    float x2_4 = X2[uint2(coord.x, coord.y)];
+    float x2_5 = X2[uint2(coord.x+1, coord.y)];
+    float x2_6 = X2[uint2(coord.x-1, coord.y+1)];
+    float x2_7 = X2[uint2(coord.x, coord.y+1)];
+    float x2_8 = X2[uint2(coord.x+1, coord.y+1)];
+    float sx2 = x2_0 + x2_1 + x2_2 + x2_3 + x2_4 + x2_5 + x2_6 + x2_7 + x2_8;
+
+    float y2_0 = Y2[uint2(coord.x-1, coord.y-1)];
+    float y2_1 = Y2[uint2(coord.x, coord.y-1)];
+    float y2_2 = Y2[uint2(coord.x+1, coord.y-1)];
+    float y2_3 = Y2[uint2(coord.x-1, coord.y)];
+    float y2_4 = Y2[uint2(coord.x, coord.y)];
+    float y2_5 = Y2[uint2(coord.x+1, coord.y)];
+    float y2_6 = Y2[uint2(coord.x-1, coord.y+1)];
+    float y2_7 = Y2[uint2(coord.x, coord.y+1)];
+    float y2_8 = Y2[uint2(coord.x+1, coord.y+1)];
+    float sy2 = y2_0 + y2_1 + y2_2 + y2_3 + y2_4 + y2_5 + y2_6 + y2_7 + y2_8;
+
+    float xy_0 = XY[uint2(coord.x-1, coord.y-1)];
+    float xy_1 = XY[uint2(coord.x, coord.y-1)];
+    float xy_2 = XY[uint2(coord.x+1, coord.y-1)];
+    float xy_3 = XY[uint2(coord.x-1, coord.y)];
+    float xy_4 = XY[uint2(coord.x, coord.y)];
+    float xy_5 = XY[uint2(coord.x+1, coord.y)];
+    float xy_6 = XY[uint2(coord.x-1, coord.y+1)];
+    float xy_7 = XY[uint2(coord.x, coord.y+1)];
+    float xy_8 = XY[uint2(coord.x+1, coord.y+1)];
+    float sxy = xy_0 + xy_1 + xy_2 + xy_3 + xy_4 + xy_5 + xy_6 + xy_7 + xy_8;
+
+    float det = (sx2*sy2)-(sxy*sxy);
+    float trace = sx2+sy2;
+    float k = 0.05;
+    float response = det - (k*(trace*trace));
+
+    Harris[uint2(coord.x, coord.y)] = response;
+}
+*/

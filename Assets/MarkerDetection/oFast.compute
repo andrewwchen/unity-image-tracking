@@ -4,19 +4,19 @@
 int Radius;
 
 RWTexture2D<float> Source;
-RWTexture2D<float2> Input;
-RWTexture2D<float3> Result;
+RWTexture2D<float> Result;
 RWTexture2D<float3> Debug;
+RWTexture2D<float> KeypointsTexture;
+RWStructuredBuffer<int2> KeypointsBuffer;
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    float2 I_p = Input[id.xy];
     float S_p = Source[id.xy];
 
     // ignore non keypoints
-    if (I_p.x == 0 && I_p.y == 0) {
-        Result[id.xy] = float3(0,0,0);
+    if (KeypointsTexture[id.xy] == 0.0) {
+        Result[id.xy] = 0.0;
         Debug[id.xy] = float3(S_p,S_p,S_p);
         return;
     }
@@ -44,6 +44,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     o = PI + o; // 0 to pi
     o = o/PI; // 0 to 1
-    Result[id.xy] = float3(I_p.x,I_p.y,o);
+    Result[id.xy] = o;
     Debug[id.xy] = float3(0,0,o);
 }

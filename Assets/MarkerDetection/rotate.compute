@@ -1,0 +1,32 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+Texture2D<float4> Input;
+RWTexture2D<float4> Output;
+int Angle;
+int Width;
+int Height;
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    // This limit the compute shader to the size of your image
+    if (id.x > Width - 1 || id.y > Height - 1)
+        return;
+ 
+    float radians = Angle * (3.14159274 * 2 / 360);
+    int w = Width;
+    int h = Height;
+    float s = sin(radians);
+    float c = cos(radians);
+    float2x2 r2 = float2x2(c, -s, s, c);
+    float2 center = float2(w, h) / 2, pos = mul(r2, id - center) + center;
+    if (min(pos.x, pos.y) < 0 || max(pos.x - w, pos.y - h) >= 0)
+    {
+        Output[id.xy] = float4(0, 0, 0, 0);
+    }
+    else
+    {
+        Output[id.xy] = Input[pos.xy];
+    }
+}

@@ -3,76 +3,63 @@
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWTexture2D<float> Source;
-RWTexture2D<float2> Input;
-RWTexture2D<float2> Result;
-RWTexture2D<float3> Debug;
+RWStructuredBuffer<int2> KeypointsBuffer;
+RWTexture2D<float> KeypointsTexture;
+RWTexture2D<float> Harris;
+AppendStructuredBuffer<int2> SuppKeypointsAppendBuffer;
 
-[numthreads(8,8,1)]
+[numthreads(1,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    float2 I_p = Input[id.xy];
-    float S_p = Source[id.xy];
-
-    // ignore non keypoints
-    if (I_p.x == 0 && I_p.y == 0) {
-        Result[id.xy] = I_p;
-        Debug[id.xy] = float3(S_p,S_p,S_p);
-        return;
-    }
+    int2 coord = KeypointsBuffer[id.x];
+    float h = Harris[uint2(coord.x, coord.y)];
 
     // Get cornerness value of neighboring points
-    float2 I_n[24];
-    I_n[0] = Input[uint2(id.x+1, id.y+1)];
-    I_n[1] = Input[uint2(id.x+1, id.y)];
-    I_n[2] = Input[uint2(id.x, id.y+1)];
-    I_n[3] = Input[uint2(id.x+1, id.y-1)];
+    uint2 neighbors[24];
+    neighbors[0] = uint2(coord.x+1, coord.y+1);
+    neighbors[1] = uint2(coord.x+1, coord.y);
+    neighbors[2] = uint2(coord.x, coord.y+1);
+    neighbors[3] = uint2(coord.x+1, coord.y-1);
     
-    I_n[4] = Input[uint2(id.x, id.y+2)];
-    I_n[5] = Input[uint2(id.x+1, id.y+2)];
-    I_n[6] = Input[uint2(id.x+1, id.y-2)];
-    I_n[7] = Input[uint2(id.x+2, id.y-2)];
-    I_n[8] = Input[uint2(id.x+2, id.y-1)];
-    I_n[9] = Input[uint2(id.x+2, id.y)];
-    I_n[10] = Input[uint2(id.x+2, id.y+1)];
-    I_n[11] = Input[uint2(id.x+2, id.y+2)];
+    neighbors[4] = uint2(coord.x, coord.y+2);
+    neighbors[5] = uint2(coord.x+1, coord.y+2);
+    neighbors[6] = uint2(coord.x+1, coord.y-2);
+    neighbors[7] = uint2(coord.x+2, coord.y-2);
+    neighbors[8] = uint2(coord.x+2, coord.y-1);
+    neighbors[9] = uint2(coord.x+2, coord.y);
+    neighbors[10] = uint2(coord.x+2, coord.y+1);
+    neighbors[11] = uint2(coord.x+2, coord.y+2);
 
-    I_n[12] = Input[uint2(id.x-1, id.y+1)];
-    I_n[13] = Input[uint2(id.x, id.y-1)];
-    I_n[14] = Input[uint2(id.x-1, id.y-1)];
-    I_n[15] = Input[uint2(id.x-1, id.y)];
+    neighbors[12] = uint2(coord.x-1, coord.y+1);
+    neighbors[13] = uint2(coord.x, coord.y-1);
+    neighbors[14] = uint2(coord.x-1, coord.y-1);
+    neighbors[15] = uint2(coord.x-1, coord.y);
 
-    I_n[16] = Input[uint2(id.x, id.y-2)];
-    I_n[17] = Input[uint2(id.x-1, id.y+2)];
-    I_n[18] = Input[uint2(id.x-1, id.y-2)];
-    I_n[19] = Input[uint2(id.x-2, id.y-2)];
-    I_n[20] = Input[uint2(id.x-2, id.y-1)];
-    I_n[21] = Input[uint2(id.x-2, id.y)];
-    I_n[22] = Input[uint2(id.x-2, id.y+1)];
-    I_n[23] = Input[uint2(id.x-2, id.y+2)];
+    neighbors[16] = uint2(coord.x, coord.y-2);
+    neighbors[17] = uint2(coord.x-1, coord.y+2);
+    neighbors[18] = uint2(coord.x-1, coord.y-2);
+    neighbors[19] = uint2(coord.x-2, coord.y-2);
+    neighbors[20] = uint2(coord.x-2, coord.y-1);
+    neighbors[21] = uint2(coord.x-2, coord.y);
+    neighbors[22] = uint2(coord.x-2, coord.y+1);
+    neighbors[23] = uint2(coord.x-2, coord.y+2);
 
-    // check if any neighboring points have higher cornerness
-    for (uint i = 0; i < 12; i++) {
-        if (I_n[i].x + I_n[i].y >= I_p.x + I_p.y) {
-            Result[id.xy] = float2(0,0);
-            Debug[id.xy] = float3(S_p,S_p,S_p);
+    // check if any neighboring points have higher cornerness and are keypoints
+    for (uint i1 = 0; i1 < 12; i1++) {
+        uint2 n = neighbors[i1];
+        if (KeypointsTexture[n] == 1.0 && Harris[n] >= h) {
+            KeypointsTexture[uint2(coord.x, coord.y)] = 0.0;
             return;
         }
     }
-    for (uint i = 12; i < 24; i++) {
-        if (I_n[i].x + I_n[i].y > I_p.x + I_p.y) {
-            Result[id.xy] = float2(0,0);
-            Debug[id.xy] = float3(S_p,S_p,S_p);
+    for (uint i2 = 12; i2 < 24; i2++) {
+        uint2 n = neighbors[i2];
+        if (KeypointsTexture[n] == 1.0 && Harris[n] > h) {
+            KeypointsTexture[uint2(coord.x, coord.y)] = 0.0;
             return;
         }
     }
 
-    // otherwise keep the corner
-    if (I_p.x > 0.0) {
-        Result[id.xy] = I_p;
-        Debug[id.xy] = float3(I_p.x,0,0);
-    } else {
-        Result[id.xy] = I_p;
-        Debug[id.xy] = float3(0,I_p.y,0);
-    }
+    // otherwise keep the keypoint
+    SuppKeypointsAppendBuffer.Append(coord);
 }

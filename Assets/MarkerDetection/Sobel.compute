@@ -1,0 +1,33 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float> Input;
+RWTexture2D<float> X2;
+RWTexture2D<float> Y2;
+RWTexture2D<float> XY;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float Ix_0 = Input[uint2(id.x-1, id.y-1)]*-1.0;
+    float Ix_2 = Input[uint2(id.x+1, id.y-1)]*1.0;
+    float Ix_3 = Input[uint2(id.x-1, id.y)]*-2.0;
+    float Ix_5 = Input[uint2(id.x+1, id.y)]*2.0;
+    float Ix_6 = Input[uint2(id.x-1, id.y+1)]*-1.0;
+    float Ix_8 = Input[uint2(id.x+1, id.y+1)]*1.0;
+    float x = Ix_0 + Ix_2 + Ix_3 + Ix_5 + Ix_6 + Ix_8;
+
+    float Iy_0 = Input[uint2(id.x-1, id.y-1)]*-1.0;
+    float Iy_1 = Input[uint2(id.x, id.y-1)]*-2.0;
+    float Iy_2 = Input[uint2(id.x+1, id.y-1)]*-1.0;
+    float Iy_6 = Input[uint2(id.x-1, id.y+1)]*1.0;
+    float Iy_7 = Input[uint2(id.x, id.y+1)]*2.0;
+    float Iy_8 = Input[uint2(id.x+1, id.y+1)]*1.0;
+    float y = Iy_0 + Iy_1 + Iy_2 + Iy_6 + Iy_7 + Iy_8;
+
+    X2[id.xy] = x * x;
+    Y2[id.xy] = y * y;
+    XY[id.xy] = x * y;
+}

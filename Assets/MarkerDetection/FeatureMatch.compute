@@ -1,0 +1,61 @@
+#pragma kernel Kernel1
+#pragma kernel Kernel2
+
+uint TestsN; // 1, 2
+uint Target2NumFeatures; // 1, 2
+
+RWStructuredBuffer<uint> Matches; // 1, 2
+
+RWStructuredBuffer<uint> Target1Features; // 1
+RWStructuredBuffer<uint> Target2Features; // 1
+
+RWStructuredBuffer<uint> BestMatches; // 2
+// RWStructuredBuffer<uint> MatchesCounter; // 2
+AppendStructuredBuffer<uint> BestMatchesAppend; // 2
+
+//RWStructuredBuffer<int2> Target1Keypoints; // 2
+//RWStructuredBuffer<int2> Target2Keypoints; // 2
+//int TargetXOffset; // 2
+//int TargetYOffset; // 2
+
+[numthreads(1,1,1)]
+void Kernel1 (uint3 id : SV_DispatchThreadID)
+{
+    uint target1FeatureNum = id.x;
+    uint target2FeatureNum = id.y;
+    uint uintsPerFeature = TestsN / 32;
+
+    uint totalMatches = 0;
+    for (uint uintNum = 0; uintNum < uintsPerFeature; uintNum++) {
+        uint uinttarget1FetureUint = Target1Features[target1FeatureNum*uintsPerFeature+uintNum];
+        uint uinttarget2FetureUint = Target2Features[target2FeatureNum*uintsPerFeature+uintNum];
+
+        uint uintMatches = countbits(~(uinttarget1FetureUint ^ uinttarget2FetureUint));
+        totalMatches = totalMatches + uintMatches;
+    }
+    
+    Matches[target1FeatureNum*Target2NumFeatures+target2FeatureNum] = totalMatches;
+}
+
+[numthreads(1,1,1)]
+void Kernel2 (uint3 id : SV_DispatchThreadID)
+{
+    uint target1FeatureNum = id.x;
+    uint maxMatches = 0;
+    for (uint target2FeatureNum = 0; target2FeatureNum < Target2NumFeatures; target2FeatureNum++) {
+        uint matches = Matches[target1FeatureNum*Target2NumFeatures+target2FeatureNum];
+        if (matches > maxMatches) {
+            maxMatches = matches;
+            BestMatches[target1FeatureNum] = target2FeatureNum;
+        }
+    }
+    if (maxMatches >= (TestsN/100.0 * 90.0)) {
+        BestMatchesAppend.Append(target1FeatureNum);
+        //int target1KeypointX = Target1Keypoints[target1FeatureNum].x;
+        //int target1KeypointY = Target1Keypoints[target1FeatureNum].y;
+        //int target2KeypointX = Target1Keypoints[target1FeatureNum].x;
+        //int target2KeypointY = Target1Keypoints[target1FeatureNum].y;
+        //TargetXOffset += 
+        // MatchesCounter.IncrementCounter();
+    }
+}
