@@ -4,6 +4,10 @@ using UnityEngine;
 using UnityEngine.XR.ARSubsystems;
 using System.IO;
 using UnityEngine.XR.ARFoundation;
+using UnityEngine.Events;
+
+using UnityEngine.UI;
+using UnityEngine.Assertions;
 
 public class ORB : MonoBehaviour
 {
@@ -17,7 +21,7 @@ public class ORB : MonoBehaviour
     protected const int gpuMemoryBlockSizeBlur = 1024;
     protected const int maxRadius = 92;
 #endif
-
+    [SerializeField] private DebugCanvas debugCanvas;
     [SerializeField] private XRReferenceImageLibrary markers;
     [SerializeField] private ComputeShader rgba2Gray;
     [SerializeField] private ComputeShader rotateShader;
@@ -30,10 +34,32 @@ public class ORB : MonoBehaviour
     [SerializeField] private ComputeShader oFastShader;
     [SerializeField] private ComputeShader briefShader;
     [SerializeField] private ComputeShader featureMatchShader;
+    [SerializeField] private ComputeShader debugShader;
 
-    private int numScales = 5;
+[Tooltip("Whether to display debug information in the video feed")]
+    [SerializeField] private bool debug = true;
+
+    [Tooltip("Number of frames between each image target scan attempt")]
+    [Range(0, 32)]
+    [SerializeField] private int scanInterval = 5;
+
+    [Tooltip("Number of valid smaller scales to scan of each image target")]
+    [Range(1, 8)]
+    [SerializeField] private int numScales = 5;
+
+    [Tooltip("Use 'useRotationTypes' to choose valid image rotations, otherwise use 'rotationAngle'")]
+    [SerializeField] private bool useRotationTypes = false;
+    [Tooltip("Valid scannable rotations of each image target in degrees")]
+    //[SerializeField] private int[] rotations = new int[] { 353, 0, 7, 83, 90, 97, 173, 180, 187, 263, 270, 277 };
+    [SerializeField] private int[] rotationTypes = new int[] { 350, 0, 10, 80, 90, 100, 170, 180, 190, 260, 270, 280 };
+    // [SerializeField] private int[] rotations = new int[] { 345, 0, 15, 75, 90, 105, 165, 180, 195, 255, 270, 285 };
+
+    [Tooltip("This is the angle at which a target image should be repeated rotated to create the set of valid scannable rotations of the original image")]
+    [Range(1, 180)]
+    [SerializeField] private int rotationAngle = 5;
     //private int[] rotations = new int[] { 0, 90, 180, 270 };
-    private int[] rotations = new int[] { 345, 0, 15, 75, 90, 105, 165, 180, 195, 255, 270, 285 };
+
+
     private float initialFastThreshold = 0.4f;
     private float minFastThreshold = 0.1f;
     private float fastThresholdIncrement = 0.05f;
@@ -76,12 +102,14 @@ public class ORB : MonoBehaviour
     private RenderTexture sobelY2;
     private RenderTexture sobelXY;
     private RenderTexture harris;
-    private RenderTexture ofps;
-    private RenderTexture ofps_debug;
+    //private RenderTexture ofps;
+    //private RenderTexture ofps_debug;
+    private RenderTexture debugRT;
 
 
     private Camera primaryCamera;
     private ARCameraBackground arCameraBackground;
+    private AROcclusionManager arOcclusionManager;
     private RenderTexture grayCameraRT;
     private RenderTexture rgbaCameraRT;
     private int viewWidth;
@@ -112,22 +140,26 @@ public class ORB : MonoBehaviour
         public ImageTarget imageTarget;
         public int matchNum;
         public int matchTotal;
-        public Vector2Int offset;
-        public MatchedTarget(ImageTarget imageTarget, int matchNum, int matchTotal, Vector2Int offset)
+        public Vector2Int origin;
+        public float scale;
+        public float depth;
+
+        public MatchedTarget(ImageTarget imageTarget, int matchNum, int matchTotal, Vector2Int origin, float scale, float depth = -1)
         {
             this.imageTarget = imageTarget;
             this.matchNum = matchNum;
             this.matchTotal = matchTotal;
-            this.offset = offset;
+            this.origin = origin;
+            this.scale = scale;
+            this.depth = depth;
         }
 
         public override string ToString()
         {
             string name = imageTarget.xrReferenceImage.name;
-            int scale = imageTarget.scale;
             int rotation = imageTarget.rotation;
             float rate = (float) matchNum / matchTotal;
-            return string.Format("best={0}, scale={1}, rotation={2}, matches={3}/{4}, rate={5}, offset=({6},{7})", name, scale, rotation, matchNum, matchTotal, rate, offset.x, offset.y);
+            return string.Format("image: {0}\nscale: {1}\norigin: ({6},{7})\nrotation: {2} dgs\nkeypoint matches: {3}/{4} ({5})\ndepth: {8}", name, scale, rotation, matchNum, matchTotal, rate, origin.x, origin.y, depth);
         }
 
     }
@@ -202,28 +234,26 @@ public class ORB : MonoBehaviour
  
     void DisposeComputeBuffers()
     {
-        weightsBuffer.Dispose();
-        fastKeypointsCountBuffer.Dispose();
-        fastKeypointsAppendBuffer.Dispose();
-        fastKeypointsBuffer.Dispose();
-        briefTestsX1Buffer.Dispose();
-        briefTestsY1Buffer.Dispose();
-        briefTestsX2Buffer.Dispose();
-        briefTestsY2Buffer.Dispose(); 
-        matchesAppendBuffer.Dispose();
-        //matchesCounter.Dispose();
-        matchesCountBuffer.Dispose();
-        weightsBuffer = null;
-        fastKeypointsCountBuffer = null;
-        fastKeypointsAppendBuffer = null;
-        fastKeypointsBuffer = null;
-        briefTestsX1Buffer = null;
-        briefTestsY1Buffer = null;
-        briefTestsX2Buffer = null;
-        briefTestsY2Buffer = null;
-        matchesAppendBuffer = null;
-        //matchesCounter = null;
-        matchesCountBuffer = null;
+        ComputeBuffer[] buffers = new ComputeBuffer[] {
+            weightsBuffer,
+            fastKeypointsCountBuffer,
+            fastKeypointsAppendBuffer,
+            fastKeypointsBuffer,
+            briefTestsX1Buffer,
+            briefTestsY1Buffer,
+            briefTestsX2Buffer,
+            briefTestsY2Buffer,
+            matchesAppendBuffer,
+            //matchesCounter,
+            matchesCountBuffer
+        };
+        foreach (ComputeBuffer buffer in buffers)
+        {
+            if (buffer != null)
+            {
+                buffer.Dispose();
+            }
+        }
     }
 
     RenderTexture MakeRenderTexture(int width, int height)
@@ -283,7 +313,7 @@ public class ORB : MonoBehaviour
         int fastKeypointsCount = 0;
         float threshold = initialFastThreshold;
         int[] fastKeypointsCountArray = new int[1] { 0 };
-        while (fastKeypointsCount < maxFastKeypoints && threshold >= minFastThreshold)
+        while (fastKeypointsCount == 0 || (fastKeypointsCount < maxFastKeypoints && threshold >= minFastThreshold))
         {
             fastKeypointsAppendBuffer.SetCounterValue(0);
             fastShader.SetBuffer(0, "KeypointsBuffer", fastKeypointsAppendBuffer);
@@ -458,24 +488,60 @@ public class ORB : MonoBehaviour
             bestMatches.Dispose();
         }
 
-        Vector2Int offset = Vector2Int.zero;
-        Vector2Int[] targetKeypoints = bestMatch.keypoints;
-        foreach (uint target1Num in bestMatchesAppendArr)
-        {
-            uint target2Num = bestMatchesArr[target1Num];
-            Vector2Int target1Coords = targetKeypoints[target1Num];
-            Vector2Int target2Coords = keypoints[target2Num];
-            offset += target2Coords - target1Coords;
-        }
 
-        if (bestMatchNum > 3)
+        if (bestMatchNum > 3 && bestMatchRate > 0.1)
         {
-            offset /= bestMatchNum;
+            Vector2Int origin = Vector2Int.zero;
+            Vector2Int[] targetKeypoints = bestMatch.keypoints;
+            foreach (uint target1Num in bestMatchesAppendArr)
+            {
+                uint target2Num = bestMatchesArr[target1Num];
+                Vector2Int target1Coords = targetKeypoints[target1Num];
+                Vector2Int target2Coords = keypoints[target2Num];
+                origin += target2Coords - target1Coords;
+            }
 
-            return new MatchedTarget(bestMatch, bestMatchNum, bestMatchTotal, offset);
+            origin /= bestMatchNum;
+
+            float scale = 0;
+
+            foreach (uint target1Num in bestMatchesAppendArr)
+            {
+                uint target2Num = bestMatchesArr[target1Num];
+                Vector2Int target1Coords = targetKeypoints[target1Num];
+                Vector2Int target2Coords = keypoints[target2Num];
+                Vector2Int target1Offset = target1Coords;
+                Vector2Int target2Offset = target2Coords - origin;
+                scale += (((float)target1Offset.x / (float)target2Offset.x) + ((float)target1Offset.y / (float)target2Offset.y)) / 2f;
+            }
+            scale /= bestMatchNum;
+
+
+            return new MatchedTarget(bestMatch, bestMatchNum, bestMatchTotal, origin, scale);
         }
 
         return null;
+    }
+
+
+    void DebugMatchedTarget(RenderTexture source, RenderTexture debug, MatchedTarget target)
+    {
+        // Debug.Log(target);
+
+        debugShader.SetTexture(0, "Source", source);
+        //debugShader.SetTexture(0, "Keypoints", keypoints);
+        debugShader.SetTexture(0, "Debug", debug);
+        debugShader.SetInt("OriginX", target.origin.x);
+        debugShader.SetInt("OriginY", target.origin.y);
+        debugShader.SetInt("OriginR", 5);
+        float width = target.scale * target.imageTarget.xrReferenceImage.texture.width / (float) target.imageTarget.scale;
+        float height = target.scale * target.imageTarget.xrReferenceImage.texture.height / (float)target.imageTarget.scale;
+
+        // Debug.LogFormat("w {0} h {1} {2} {3}", width, height, target.imageTarget.xrReferenceImage.texture.width, target.imageTarget.scale);
+        debugShader.SetInt("Width", (int) width);
+        debugShader.SetInt("Height", (int) height);
+        debugShader.SetInt("Stroke", 5);
+        debugShader.Dispatch(0, viewWidth, viewHeight, 1);
     }
 
     void RT2PNG(RenderTexture rt, string filepath, int width, int height)
@@ -486,7 +552,6 @@ public class ORB : MonoBehaviour
         texture.Apply();
         File.WriteAllBytes(filepath, texture.EncodeToPNG());
     }
-
 
     void Awake()
     {
@@ -510,7 +575,20 @@ public class ORB : MonoBehaviour
                 int scale = 1 << j;
                 int width = texture.width / scale;
                 int height = texture.height / scale;
-
+                int[] rotations;
+                if (useRotationTypes)
+                {
+                    rotations = rotationTypes;
+                }
+                else
+                {
+                    rotations = new int[360 / rotationAngle];
+                    for (int currentRotationIndex = 0; currentRotationIndex < 360 / rotationAngle; currentRotationIndex++)
+                    {
+                        int currentRotation = currentRotationIndex * rotationAngle;
+                        rotations[currentRotationIndex] = currentRotation;
+                    }
+                }
                 foreach (int rotation in rotations)
                 {
                     // RGBA
@@ -585,6 +663,8 @@ public class ORB : MonoBehaviour
     {
         primaryCamera = GetComponent<Camera>();
         arCameraBackground = GetComponent<ARCameraBackground>();
+        arOcclusionManager = GetComponent<AROcclusionManager>();
+
         viewWidth = primaryCamera.pixelWidth / viewScale;
         viewHeight = primaryCamera.pixelHeight / viewScale;
         viewDepth = 1;
@@ -616,18 +696,25 @@ public class ORB : MonoBehaviour
         sobelY2 = MakeRenderTexture(viewWidth, viewHeight);
         sobelXY = MakeRenderTexture(viewWidth, viewHeight);
         harris = MakeRenderTexture(viewWidth, viewHeight);
-        ofps = MakeRenderTexture(viewWidth, viewHeight);
-        ofps_debug = MakeRenderTexture(viewWidth, viewHeight);
+
+        debugRT = new RenderTexture(viewWidth, viewHeight, viewDepth);
+        debugRT.enableRandomWrite = true;
+        debugRT.Create();
+        //ofps = MakeRenderTexture(viewWidth, viewHeight);
+        //ofps_debug = MakeRenderTexture(viewWidth, viewHeight);
     }
 
-    [SerializeField] private int interval = 5;
     private int nextTime = 0;
+    private int timeSinceScan = 0;
+
+    private MatchedTarget? lastTarget;
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
+        timeSinceScan += 1;
         if (nextTime <= 0)
         {
-            nextTime = interval-1;
+            nextTime = scanInterval;
 
             SetBlurWeightsBuffer();
             MakeComputeBuffers();
@@ -655,30 +742,87 @@ public class ORB : MonoBehaviour
             (int numKeypoints, Vector2Int[] keypoints) = FAST(grayCameraRT, fps, sobelX2, sobelY2, sobelXY, harris, viewWidth, viewHeight);
 
             // FAST ORIENTATION
-            oFAST(numKeypoints, grayCameraRT, fps, ofps, ofps_debug, viewWidth, viewHeight);
+            //oFAST(numKeypoints, grayCameraRT, fps, ofps, ofps_debug, viewWidth, viewHeight);
 
 
             // BRIEF
             ComputeBuffer features = BRIEF(grayCameraRT, numKeypoints);
 
             // Feature Matching
-            MatchedTarget? maybeMatchedTarget = FeatureMatch(features, numKeypoints, keypoints);
-            features.Dispose();
+            MatchedTarget? maybeTarget = FeatureMatch(features, numKeypoints, keypoints);
 
-            if (maybeMatchedTarget is MatchedTarget matchedTarget)
+            if (maybeTarget is MatchedTarget newMatchedTarget)
             {
-                //Vector2Int offset = matchedTarget.offset;
+                lastTarget = maybeTarget;
+                timeSinceScan = 0;
 
-                Debug.Log(matchedTarget);
+                // calculate depth here
+                if (arOcclusionManager.TryAcquireEnvironmentDepthCpuImage(out var cpuImage) && cpuImage.valid)
+                {
+                    using (cpuImage)
+                    {
+                        Texture2D depthTexture = null;
+                        if (depthTexture == null || depthTexture.width != cpuImage.width || depthTexture.height != cpuImage.height)
+                        {
+                            depthTexture = new Texture2D(cpuImage.width, cpuImage.height, cpuImage.format.AsTextureFormat(), false);
+                        }
+
+                        var conversionParams = new XRCpuImage.ConversionParams(cpuImage, cpuImage.format.AsTextureFormat());
+                        var rawTextureData = depthTexture.GetRawTextureData<byte>();
+
+                        Debug.Assert(rawTextureData.Length == cpuImage.GetConvertedDataSize(conversionParams.outputDimensions, conversionParams.outputFormat),
+                            "The Texture2D is not the same size as the converted data.");
+
+                        cpuImage.Convert(conversionParams, rawTextureData);
+                        depthTexture.Apply();
+                        int targetCenterX = newMatchedTarget.origin.x + (int)(newMatchedTarget.scale / 2f);
+                        int targetCenterY = newMatchedTarget.origin.y + (int)(newMatchedTarget.scale / 2f);
+                        float targetCenterXRatio = (float)targetCenterX / (float)viewWidth;
+                        float targetCenterYRatio = (float)targetCenterY / (float)viewHeight;
+                        int targetCenterXInDepthImage = (int)(targetCenterXRatio * (float)depthTexture.width);
+                        int targetCenterYInDepthImage = (int)(targetCenterYRatio * (float)depthTexture.height);
+                        Color depthColor = depthTexture.GetPixel(targetCenterXInDepthImage, targetCenterYInDepthImage);
+                        newMatchedTarget.depth = depthColor.r;
+                        //Debug.LogFormat("{0} {1} {2} {3}\n", depthColor.r, depthColor.g, depthColor.b, depthColor.a);
+                    }
+                }
             }
 
-
-            Graphics.Blit(ofps_debug, destination);
             DisposeComputeBuffers();
 
         } else
         {
             nextTime -= 1;
+        }
+
+        // Display results
+        if (lastTarget is MatchedTarget matchedTarget && timeSinceScan < 20)
+        {
+            if (debug)
+            {
+                DebugMatchedTarget(rgbaCameraRT, debugRT, matchedTarget);
+                Graphics.Blit(debugRT, destination);
+            }
+            if (debugCanvas != null)
+            {
+
+                debugCanvas.image.enabled = true;
+                debugCanvas.image.texture = matchedTarget.imageTarget.xrReferenceImage.texture;
+                debugCanvas.text.enabled = true;
+                debugCanvas.text.text = matchedTarget.ToString();
+            }
+
+        }
+        else
+        {
+            Graphics.Blit(rgbaCameraRT, destination);
+
+            if (debugCanvas != null)
+            {
+                debugCanvas.image.enabled = false;
+                debugCanvas.text.enabled = true;
+                debugCanvas.text.text = "no matches";
+            }
         }
 
     }
@@ -691,13 +835,4 @@ public class ORB : MonoBehaviour
             Graphics.Blit(null, rgbaCameraRT, arCameraBackground.material);
         }
     }
-    /*
-    private void OnDestroy()
-    {
-        DisposeComputeBuffers();
-    }
-    private void OnDisable()
-    {
-        DisposeComputeBuffers();
-    }*/
 }

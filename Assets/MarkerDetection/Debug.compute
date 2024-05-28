@@ -1,0 +1,63 @@
+#pragma kernel CSMain
+
+Texture2D<float4> Source;
+//Texture2D<float> Keypoints;
+RWTexture2D<float4> Debug;
+
+int OriginX;
+int OriginY;
+int OriginR;
+int Width;
+int Height;
+int Stroke;
+//int KeypointR;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+
+    // draw origin;
+    int xr = (int)id.x-OriginX;
+    int yr = (int)id.y-OriginY;
+    if (xr*xr + yr*yr <= OriginR*OriginR) {
+        Debug[id.xy] = float4(1.0,0,0,0);
+        return;
+    }
+    if (Width < 0) {
+        OriginX = OriginX + Width;
+        Width = -Width;
+    }
+    if (Height < 0) {
+        OriginY = OriginY + Height;
+        Height = -Height;
+    }
+
+
+    // draw bounding box;
+    // check if inside the box
+    if (Width > 0 && Height > 0) {
+        if ((int)id.x >= OriginX && (int)id.x <= OriginX + Width && (int)id.y >= OriginY && (int)id.y <= OriginY + Height) {
+            // check if in stroke
+            if ((int)id.x <= OriginX + Stroke || (int)id.x >= OriginX + Width - Stroke || (int)id.y <= OriginY + Stroke || (int)id.y >= OriginY + Height - Stroke) {
+                Debug[id.xy] = float4(0,0,1.0,0);
+                return;
+            }
+        }
+    }
+
+    // draw keypoints
+    /*
+    for (int x = id.x-KeypointR; x <= id.x+KeypointR; x++) {
+        for (int y = id.y-KeypointR; y <= id.y+KeypointR; y++) {
+
+        }
+    }*/
+    /*
+    if (Keypoints[id.xy] > 0.5) {
+        Debug[id.xy] = float4(0,1.0,0,0);
+        return;
+    }*/
+
+    // draw remaining pixels    
+    Debug[id.xy] = Source[id.xy];
+}
