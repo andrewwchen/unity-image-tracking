@@ -14,14 +14,24 @@ public class Clock : MonoBehaviour
     public int roundToNearestDegree = 6;
     public int roundDampingPower = 16;
     public float pendulumMaxAngle = 12;
+    public AudioClip tickingSound;
+
+    private AudioSource audioSource;
 
 
     private float realStartTime = 0;
 
+    private void Awake()
+    {
+        audioSource = GetComponent<AudioSource>();
+        audioSource.clip = tickingSound;
+    }
+
     // Start is called before the first frame update
-    void Start()
+    void OnEnable()
     {
         realStartTime = Time.time;
+        audioSource.Play();
     }
 
     // Update is called once per frame
@@ -43,11 +53,10 @@ public class Clock : MonoBehaviour
             secondAngle = Mathf.Floor(secondAngle / roundToNearestDegree) * roundToNearestDegree + Mathf.Pow(secondAngle / roundToNearestDegree - Mathf.Floor(secondAngle / roundToNearestDegree), roundDampingPower);
         }
 
-        hourHand.transform.eulerAngles = Vector3.right * hourAngle;
-        minuteHand.transform.eulerAngles = Vector3.right * minuteAngle;
-        secondHand.transform.eulerAngles = Vector3.right * secondAngle;
-
-        pendulum.transform.eulerAngles = Vector3.right * Mathf.Sin(seconds * 2) * 12f;
+        hourHand.transform.localEulerAngles = Vector3.right * hourAngle;
+        minuteHand.transform.localEulerAngles = Vector3.right* minuteAngle;
+        secondHand.transform.localEulerAngles = Vector3.right* secondAngle;
+        pendulum.transform.localEulerAngles = Vector3.right * Mathf.Sin(seconds * 2) * 12f;
 
     }
 }
