@@ -111,6 +111,8 @@ public class ORB : MonoBehaviour
     private int viewWidth;
     private int viewHeight;
     private int viewDepth;
+    private int lastNumSuppKeypoints;
+    private int lastBestMatchNum;
 
     struct ImageTarget
 
@@ -455,6 +457,8 @@ public class ORB : MonoBehaviour
             matchesAppendBuffer.Release();
         }
 
+        lastBestMatchNum = bestMatchNum;
+
 
         if (bestMatchNum > 3 && bestMatchRate > 0.0001f)
         {
@@ -781,7 +785,7 @@ public class ORB : MonoBehaviour
             {
                 debugCanvas.image.enabled = false;
                 debugCanvas.text.enabled = true;
-                debugCanvas.text.text = "no matches";
+                debugCanvas.text.text = "no matches\n" + lastNumSuppKeypoints + " keypoints found\n " + lastBestMatchNum + " keypoints matched";
                 debugCanvas.button.SetActive(false);
                 debugCanvas.upLeft.SetActive(false);
                 debugCanvas.upRight.SetActive(false);
@@ -823,14 +827,13 @@ public class ORB : MonoBehaviour
         // FAST ORIENTATION
         //oFAST(numKeypoints, grayCameraRT, fps, ofps, ofps_debug, viewWidth, viewHeight);
 
-
+        lastNumSuppKeypoints = numKeypoints;
         // BRIEF
         if (numKeypoints == 0)
         {
             return;
         }
         ComputeBuffer features = BRIEF(grayCameraRT, Mathf.Min(numKeypoints, maxFastKeypoints));
-
 
         // Feature Matching
         MatchedTarget? maybeTarget = FeatureMatch(features, numKeypoints, keypoints);
