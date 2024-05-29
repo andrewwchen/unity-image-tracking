@@ -62,7 +62,7 @@ public class ORB : MonoBehaviour
     private float initialFastThreshold = 0.4f;
     private float minFastThreshold = 0.1f;
     private float fastThresholdIncrement = 0.05f;
-    private int maxFastCandidateKeypoints = 400;
+    private int maxFastCandidateKeypoints = 800;
     private int maxFastKeypoints = 200;
 
     private int viewScale = 1;
