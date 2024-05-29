@@ -725,14 +725,15 @@ public class ORB : MonoBehaviour
         //ofps_debug = MakeRenderTexture(viewWidth, viewHeight);
     }
 
-    /*
+#if UNITY_EDITOR
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         Scan();
         timeSinceScan += 1;
         Display();
         Graphics.Blit(rgbaCameraRT, destination);
-    }*/
+    }
+#endif
 
     // Update is called once per frame
     void Update()
