@@ -20,7 +20,7 @@ public class ORB : MonoBehaviour
         protected const int gpuMemoryBlockSizeBlur = 1024;
         protected const int maxRadius = 92;
 #endif
-    [SerializeField] private GameObject debugObjectPrefab;
+    [SerializeField] private GameObject[] debugObjectPrefabs;
     [SerializeField] private DebugCanvas debugCanvas;
     [SerializeField] private XRReferenceImageLibrary markers;
     [SerializeField] private ComputeShader rgba2Gray;
@@ -71,7 +71,6 @@ public class ORB : MonoBehaviour
     private int briefNumTests = 128;
     private int briefPatchSize = 31;
 
-    [SerializeField] private bool useSecondaryCamera = false;
     [SerializeField] private Camera secondaryCamera;
 
     private ComputeBuffer weightsBuffer;
@@ -498,7 +497,7 @@ public class ORB : MonoBehaviour
             }
 
             Camera cam;
-            if (useSecondaryCamera)
+            if (secondaryCamera.isActiveAndEnabled)
             {
                 cam = secondaryCamera;
             }
@@ -541,17 +540,24 @@ public class ORB : MonoBehaviour
 
     private MatchedTarget? lastTarget;
     Dictionary<string, GameObject> instantiatedObjects = new Dictionary<string, GameObject>();
+    Dictionary<string, int> instantiatedObjectTypes = new Dictionary<string, int>();
     void CreateObject()
     {
         if (lastTarget is MatchedTarget matchedTarget && timeSinceScan < 20)
         {
             string name = matchedTarget.imageTarget.xrReferenceImage.name;
+            int debugObjectNum;
             if (instantiatedObjects.ContainsKey(name))
             {
                 Destroy(instantiatedObjects[name]);
+                debugObjectNum = instantiatedObjectTypes[name];
+            } else
+            {
+                debugObjectNum = instantiatedObjects.Count % debugObjectPrefabs.Length;
+                instantiatedObjectTypes[name] = debugObjectNum;
             }
 
-            GameObject instance = Instantiate(debugObjectPrefab, matchedTarget.position, matchedTarget.orientation);
+            GameObject instance = Instantiate(debugObjectPrefabs[debugObjectNum], matchedTarget.position, matchedTarget.orientation);
 
             instance.AddComponent<ARAnchor>();
             instantiatedObjects[name] = instance;
@@ -684,7 +690,7 @@ public class ORB : MonoBehaviour
         viewHeight = primaryCamera.pixelHeight / viewScale;
         viewDepth = 1;
 
-        if (useSecondaryCamera)
+        if (secondaryCamera.isActiveAndEnabled)
         {
             viewWidth = secondaryCamera.pixelWidth / viewScale;
             viewHeight = secondaryCamera.pixelHeight / viewScale;
@@ -698,7 +704,7 @@ public class ORB : MonoBehaviour
         grayCameraRT.enableRandomWrite = true;
         grayCameraRT.Create();
 
-        if (useSecondaryCamera)
+        if (secondaryCamera.isActiveAndEnabled)
         {
             secondaryCamera.targetTexture = rgbaCameraRT;
         }
