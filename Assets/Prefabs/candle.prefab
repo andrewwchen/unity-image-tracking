@@ -9667,6 +9667,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1941423048195650096}
   - component: {fileID: 5089464786792489755}
+  - component: {fileID: 4824045016850070209}
   m_Layer: 0
   m_Name: candle
   m_TagString: Untagged
@@ -9704,8 +9705,8 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_audioClip: {fileID: 8300000, guid: b599b335f8e92b941926b55ccf029ec7, type: 3}
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
@@ -9790,6 +9791,19 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &4824045016850070209
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6809178492554197984}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b68982dc25991004a94250284e8216fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  lighterSound: {fileID: 8300000, guid: b599b335f8e92b941926b55ccf029ec7, type: 3}
 --- !u!1001 &4597716654648572875
 PrefabInstance:
   m_ObjectHideFlags: 0
