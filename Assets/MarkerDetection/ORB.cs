@@ -272,7 +272,7 @@ public class ORB : MonoBehaviour
     {
         rgba2Gray.SetTexture(0, "Input", rgba);
         rgba2Gray.SetTexture(0, "Result", gray);
-        rgba2Gray.Dispatch(0, width, height, 1);
+        rgba2Gray.Dispatch(0, (width+7)/8, (height+7)/8, 1);
     }
 
     (int, Vector2Int[]) FAST(RenderTexture source, RenderTexture fps, RenderTexture sobelX2, RenderTexture sobelY2, RenderTexture sobelXY, RenderTexture harris, int width, int height)
@@ -291,7 +291,7 @@ public class ORB : MonoBehaviour
             fastShader.SetInt("Width", width);
             fastShader.SetInt("Height", height);
             fastShader.SetInt("Edge", 3);
-            fastShader.Dispatch(0, width, height, 1);
+            fastShader.Dispatch(0, (width+7)/8, (height+7)/8, 1);
 
             // Copy the count
             ComputeBuffer.CopyCount(fastKeypointsAppendBuffer, fastKeypointsCountBuffer, 0);
@@ -301,6 +301,7 @@ public class ORB : MonoBehaviour
 
             // Actual count in append buffer
             fastKeypointsCount = fastKeypointsCountArray[0];
+            //fastKeypointsCount = Mathf.Min(fastKeypointsCount, maxFastCandidateKeypoints);
 
             // decrease threshold
             threshold -= fastThresholdIncrement;
@@ -318,7 +319,7 @@ public class ORB : MonoBehaviour
         sobelShader.SetTexture(0, "X2", sobelX2);
         sobelShader.SetTexture(0, "Y2", sobelY2);
         sobelShader.SetTexture(0, "XY", sobelXY);
-        sobelShader.Dispatch(0, width, height, 1);
+        sobelShader.Dispatch(0, (width + 7) / 8, (height + 7) / 8, 1);
 
         // calculate the harris cornerness value for each keypoint
         harrisShader.SetTexture(0, "X2", sobelX2);
@@ -326,7 +327,8 @@ public class ORB : MonoBehaviour
         harrisShader.SetTexture(0, "XY", sobelXY);
         harrisShader.SetTexture(0, "Harris", harris);
         harrisShader.SetBuffer(0, "KeypointsBuffer", fastKeypointsBuffer);
-        harrisShader.Dispatch(0, fastKeypointsCount, 1, 1);
+        harrisShader.SetInt("NumKeypoints", fastKeypointsCount);
+        harrisShader.Dispatch(0, (fastKeypointsCount+63)/64, 1, 1);
 
 
         // KEYPOINTS non maximal suppression
@@ -335,7 +337,8 @@ public class ORB : MonoBehaviour
         keypointsNonMaximalSuppression.SetBuffer(0, "KeypointsBuffer", fastKeypointsBuffer);
         keypointsNonMaximalSuppression.SetTexture(0, "KeypointsTexture", fps);
         keypointsNonMaximalSuppression.SetTexture(0, "Harris", harris);
-        keypointsNonMaximalSuppression.Dispatch(0, fastKeypointsCount, 1, 1);
+        keypointsNonMaximalSuppression.SetInt("NumKeypoints", fastKeypointsCount);
+        keypointsNonMaximalSuppression.Dispatch(0, (fastKeypointsCount+63)/64, 1, 1);
 
         // Copy the count
         ComputeBuffer.CopyCount(fastKeypointsAppendBuffer, fastKeypointsCountBuffer, 0);
@@ -345,12 +348,14 @@ public class ORB : MonoBehaviour
 
         // Actual count in append buffer
         int fastSuppKeypointsCount = fastKeypointsCountArray[0];
+        fastSuppKeypointsCount = Mathf.Min(fastSuppKeypointsCount, maxFastKeypoints);
 
         // Get the append buffer data.
         fastKeypointsAppendBuffer.GetData(fastKeypoints);
         fastKeypointsBuffer.SetData(fastKeypoints);
 
-        // Debug.LogFormat("Keypoints before suppression {0}, Keypoints after suppresssion {1}", fastKeypointsCount, fastSuppKeypointsCount);
+        //Debug.LogFormat("Keypoints before suppression {0}, Keypoints after suppresssion {1}", fastKeypointsCount, fastSuppKeypointsCount);
+
         return (fastSuppKeypointsCount, fastKeypoints);
     }
 
@@ -374,7 +379,7 @@ public class ORB : MonoBehaviour
         briefShader.SetInt("TestsN", briefNumTests);
         //briefShader.SetBuffer(0, "Input", ofps);
         //Debug.Log(numKeypoints * 4*4);
-        briefShader.Dispatch(0, numKeypoints, briefNumTests / 32, 1);
+        briefShader.Dispatch(0, (numKeypoints+31)/32, (briefNumTests / 32+1)/2, 1);
         briefTestsOutBuffer.GetData(briefResult);
         return briefTestsOutBuffer;
         //int lastGroup = briefNumTests / 32 * (numKeypoints - 1);
@@ -402,16 +407,17 @@ public class ORB : MonoBehaviour
             int[] matchesCountArray = new int[1] { 0 };
 
             featureMatchShader.SetInt("TestsN", briefNumTests);
+            featureMatchShader.SetInt("Target1NumFeatures", targetNumKeypoints);
             featureMatchShader.SetInt("Target2NumFeatures", numKeypoints);
             featureMatchShader.SetBuffer(0, "Matches", matches);
             featureMatchShader.SetBuffer(0, "Target1Features", targetFeatures);
             featureMatchShader.SetBuffer(0, "Target2Features", features);
-            featureMatchShader.Dispatch(0, targetNumKeypoints, numKeypoints, 1);
+            featureMatchShader.Dispatch(0, (targetNumKeypoints+7)/8, (numKeypoints+7)/8, 1);
 
             featureMatchShader.SetBuffer(1, "Matches", matches);
             featureMatchShader.SetBuffer(1, "BestMatches", bestMatches);
             featureMatchShader.SetBuffer(1, "BestMatchesAppend", matchesAppendBuffer);
-            featureMatchShader.Dispatch(1, targetNumKeypoints, 1, 1);
+            featureMatchShader.Dispatch(1, (targetNumKeypoints+63)/64, 1, 1);
 
             // Copy the count
             ComputeBuffer.CopyCount(matchesAppendBuffer, matchesCountBuffer, 0);
@@ -428,7 +434,7 @@ public class ORB : MonoBehaviour
             //int scale2 = imageTarget.scale;
             //Debug.LogFormat("{0}, scale={1}, matches={2}/{3}, rate={4}", name2, scale2, matchesCount, targetNumKeypoints, matchRate);
 
-            if (matchRate > bestMatchRate)
+            if (matchRate > bestMatchRate && matchRate < 1f)
             {
                 bestMatchRate = matchRate;
                 bestMatchNum = matchesCount;
@@ -439,7 +445,7 @@ public class ORB : MonoBehaviour
                 bestMatchesArr = new uint[targetNumKeypoints];
                 bestMatchesAppendArr = new uint[matchesCount];
                 bestMatches.GetData(bestMatchesArr);
-                Debug.LogFormat("{0} {1}",matchesCount, maxFastCandidateKeypoints);
+                //Debug.LogFormat("{0} {1}",matchesCount, maxFastCandidateKeypoints);
                 matchesAppendBuffer.SetCounterValue((uint) Mathf.Min(matchesCount, maxFastCandidateKeypoints));
                 matchesAppendBuffer.GetData(bestMatchesAppendArr);
             }
@@ -451,7 +457,7 @@ public class ORB : MonoBehaviour
         }
 
 
-        if (bestMatchNum > 3 && bestMatchRate > 0.001)
+        if (bestMatchNum > 3 && bestMatchRate > 0.0001f)
         {
             Vector2Int origin = Vector2Int.zero;
             Vector2Int[] targetKeypoints = bestMatch.keypoints;
@@ -465,7 +471,7 @@ public class ORB : MonoBehaviour
 
             origin /= bestMatchNum;
 
-            if (origin.x < -10 || origin.y < -10 || float.IsNaN(origin.x) || float.IsNaN(origin.y) || origin.x >= viewWidth || origin.y >= viewHeight)
+            if (origin.x < -viewWidth || origin.y < -viewHeight || float.IsNaN(origin.x) || float.IsNaN(origin.y) || origin.x >= viewWidth || origin.y >= viewHeight)
             {
                 return null;
             }
@@ -483,7 +489,10 @@ public class ORB : MonoBehaviour
             }
             scale /= bestMatchNum;
 
-            if (scale <= 0 || float.IsNaN(scale) || origin.x + scale >= viewWidth || origin.y + scale >= viewHeight)
+            float pixelWidth = scale * bestMatch.xrReferenceImage.texture.width * Mathf.Pow(2, bestMatch.scalePower);
+            float pixelHeight = scale * bestMatch.xrReferenceImage.texture.height * Mathf.Pow(2, bestMatch.scalePower);
+
+            if (scale <= 0 || float.IsNaN(scale) || origin.x + pixelWidth >= viewWidth*2 || origin.y + pixelHeight >= viewHeight*2)
             {
                 return null;
             }
@@ -498,8 +507,6 @@ public class ORB : MonoBehaviour
                 cam = primaryCamera;
             }
 
-            float pixelWidth = scale * bestMatch.xrReferenceImage.texture.width * Mathf.Pow(2, bestMatch.scalePower);
-            float pixelHeight = scale * bestMatch.xrReferenceImage.texture.height * Mathf.Pow(2, bestMatch.scalePower);
 
             float targetCenterX = pixelWidth / 2f + origin.x;
             float targetCenterY = pixelHeight / 2f + origin.y;
@@ -523,9 +530,7 @@ public class ORB : MonoBehaviour
             Vector3 offset = leg2Direction * depth;
             Vector3 worldPosition = cam.transform.position + offset;
 
-            Quaternion worldOrientation = Quaternion.Euler(0, 180, -bestMatch.rotation);
-
-            return new MatchedTarget(bestMatch, bestMatchNum, bestMatchTotal, origin, scale, depth, worldPosition, worldOrientation);
+            return new MatchedTarget(bestMatch, bestMatchNum, bestMatchTotal, origin, scale, depth, worldPosition, Quaternion.identity);
         }
 
         return null;
@@ -557,7 +562,7 @@ public class ORB : MonoBehaviour
 
     void Awake()
     {
-        Application.targetFrameRate = 15;
+        Application.targetFrameRate = 16;
         blurHorID = blurShader.FindKernel("HorzBlurCs");
         blurVerID = blurShader.FindKernel("VertBlurCs");
 
@@ -606,7 +611,7 @@ public class ORB : MonoBehaviour
                         rotateShader.SetInt("Angle", rotation);
                         rotateShader.SetInt("Width", width);
                         rotateShader.SetInt("Height", height);
-                        rotateShader.Dispatch(0, width, height, 1);
+                        rotateShader.Dispatch(0, (width+7)/8, (height+7)/8, 1);
 
                         rgba_temp = rotation_output;
                     }
@@ -714,13 +719,14 @@ public class ORB : MonoBehaviour
         //ofps_debug = MakeRenderTexture(viewWidth, viewHeight);
     }
 
+    /*
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         Scan();
         timeSinceScan += 1;
         Display();
         Graphics.Blit(rgbaCameraRT, destination);
-    }
+    }*/
 
     // Update is called once per frame
     void Update()
@@ -728,6 +734,9 @@ public class ORB : MonoBehaviour
         if (arCameraBackground.material != null)
         {
             Graphics.Blit(null, rgbaCameraRT, arCameraBackground.material);
+            Scan();
+            timeSinceScan += 1;
+            Display();
         }
     }
 

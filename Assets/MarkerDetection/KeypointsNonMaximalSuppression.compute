@@ -7,10 +7,14 @@ RWStructuredBuffer<int2> KeypointsBuffer;
 RWTexture2D<float> KeypointsTexture;
 RWTexture2D<float> Harris;
 AppendStructuredBuffer<int2> SuppKeypointsAppendBuffer;
+uint NumKeypoints;
 
-[numthreads(1,1,1)]
+[numthreads(64,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
+    if (id.x >= NumKeypoints ) {
+        return;
+    }
     int2 coord = KeypointsBuffer[id.x];
     float h = Harris[uint2(coord.x, coord.y)];
 

@@ -2,6 +2,7 @@
 #pragma kernel Kernel2
 
 uint TestsN; // 1, 2
+uint Target1NumFeatures; // 1, 2
 uint Target2NumFeatures; // 1, 2
 
 RWStructuredBuffer<uint> Matches; // 1, 2
@@ -18,11 +19,18 @@ AppendStructuredBuffer<uint> BestMatchesAppend; // 2
 //int TargetXOffset; // 2
 //int TargetYOffset; // 2
 
-[numthreads(1,1,1)]
+[numthreads(8,8,1)]
 void Kernel1 (uint3 id : SV_DispatchThreadID)
 {
     uint target1FeatureNum = id.x;
     uint target2FeatureNum = id.y;
+    if (target1FeatureNum >= Target1NumFeatures) {
+        return;
+    }
+
+    if (target2FeatureNum >= Target2NumFeatures) {
+        return;
+    }
     uint uintsPerFeature = TestsN / 32;
 
     uint totalMatches = 0;
@@ -37,10 +45,13 @@ void Kernel1 (uint3 id : SV_DispatchThreadID)
     Matches[target1FeatureNum*Target2NumFeatures+target2FeatureNum] = totalMatches;
 }
 
-[numthreads(1,1,1)]
+[numthreads(64,1,1)]
 void Kernel2 (uint3 id : SV_DispatchThreadID)
 {
     uint target1FeatureNum = id.x;
+    if (target1FeatureNum >= Target1NumFeatures) {
+        return;
+    }
     uint maxMatches = 0;
     for (uint target2FeatureNum = 0; target2FeatureNum < Target2NumFeatures; target2FeatureNum++) {
         uint matches = Matches[target1FeatureNum*Target2NumFeatures+target2FeatureNum];

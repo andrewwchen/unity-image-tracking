@@ -9,7 +9,7 @@ RWStructuredBuffer<uint> TestsOutBuffer;
 RWTexture2D<float> Source;
 uint TestsN;
 
-[numthreads(1,1,1)]
+[numthreads(32,2,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
     uint keypointNumber = id.x;

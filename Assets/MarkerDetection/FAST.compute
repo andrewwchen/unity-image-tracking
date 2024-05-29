@@ -1,6 +1,20 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
+#if SHADER_API_GLES3
+	#define threadCount 64
+    #define maxRadius 32
+    #define threadCountRoot 8
+#elif SHADER_API_METAL
+	#define threadCount 484
+    #define maxRadius 64
+    #define threadCountRoot 22 
+#else
+	#define threadCount 1024
+    #define maxRadius 92
+    #define threadCountRoot 32
+#endif
+
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 RWTexture2D<float> Input;
@@ -12,7 +26,7 @@ AppendStructuredBuffer<int2> KeypointsBuffer;
 RWTexture2D<float> KeypointsTexture;
 // RWTexture2D<float3> Debug;
 
-[numthreads(8,8,1)]
+[numthreads(8, 8, 1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
     float I_p = Input[id.xy];
