@@ -1,4 +1,5 @@
 # Image Recognition Pipeline for Mobile AR
+<img src="https://user-images.githubusercontent.com/16319829/81180309-2b51f000-8fee-11ea-8a78-ddfe8c3412a7.png" width="150" height="280">
 
 <a href="url"><img src="[https://github.com/favicon.ico](https://github.com/chenmasterandrew/entangledecologies/assets/30731383/17e09a69-0944-4988-ac26-f0b2dff07db4)" width="250"></a>
 
