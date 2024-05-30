@@ -1,0 +1,26 @@
+fileFormatVersion: 2
+guid: 0d1103dfe4d1b0440aaa9abb3c42e04b
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - arCameraBackground: {instanceID: 0}
+  - primaryCamera: {instanceID: 0}
+  - secondaryCamera: {instanceID: 0}
+  - markers: {instanceID: 0}
+  - rgba2Gray: {fileID: 7200000, guid: 71ccb4b036b5449618fecf989580eb7a, type: 3}
+  - rotateShader: {fileID: 7200000, guid: b89d6973ee75aba428ad332b5bbfc6d4, type: 3}
+  - blurShader: {fileID: 7200000, guid: e25cd51ea05f38744a33c7b1fc82a8c5, type: 3}
+  - fastShader: {fileID: 7200000, guid: 397b86d1256f22a49b55be0150669163, type: 3}
+  - sobelShader: {fileID: 7200000, guid: 93465594d85faed429481ccaffe2765d, type: 3}
+  - harrisShader: {fileID: 7200000, guid: a1ad60c82d0796c459db1d5fb3e67322, type: 3}
+  - keypointsNonMaximalSuppression: {fileID: 7200000, guid: 86116e380285cdf418ee066393eedd9a,
+      type: 3}
+  - briefShader: {fileID: 7200000, guid: cdfbc8e2823a739439737b166dcb2e32, type: 3}
+  - featureMatchShader: {fileID: 7200000, guid: fda4c041dc266b547a2f9bff7146e336,
+      type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
