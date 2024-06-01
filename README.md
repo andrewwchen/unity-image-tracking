@@ -1,4 +1,4 @@
-# Image Recognition Pipeline for Mobile AR
+# Image Tracking Pipeline for Unity Mobile AR
 
 ![IMG_0087](https://github.com/chenmasterandrew/entangledecologies/assets/30731383/976728c3-8f04-4a7a-b98b-36af0a6d0fc3)
 
