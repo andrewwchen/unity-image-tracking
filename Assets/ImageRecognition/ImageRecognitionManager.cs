@@ -456,19 +456,22 @@ namespace ImageRecognition
 
             if (bestMatchNum > 3 && bestMatchRate > 0.0001f)
             {
-                Vector2Int origin = Vector2Int.zero;
                 Vector2Int[] targetKeypoints = bestMatch.keypoints;
+                Vector2Int target1Center = Vector2Int.zero;
+                Vector2Int target2Center = Vector2Int.zero;
                 foreach (uint target1Num in bestMatchesAppendArr)
                 {
                     uint target2Num = bestMatchesArr[target1Num];
                     Vector2Int target1Coords = targetKeypoints[target1Num];
+                    target1Center += target1Coords;
                     Vector2Int target2Coords = keypoints[target2Num];
-                    origin += target2Coords - target1Coords;
+                    target2Center += target2Coords;
                 }
 
-                origin /= bestMatchNum;
+                target1Center /= bestMatchNum;
+                target2Center /= bestMatchNum;
 
-                if (origin.x < -viewWidth || origin.y < -viewHeight || float.IsNaN(origin.x) || float.IsNaN(origin.y) || origin.x >= viewWidth || origin.y >= viewHeight)
+                if (target2Center.x < -viewWidth || target2Center.y < -viewHeight || float.IsNaN(target2Center.x) || float.IsNaN(target2Center.y) || target2Center.x >= viewWidth || target2Center.y >= viewHeight)
                 {
                     return null;
                 }
@@ -480,20 +483,29 @@ namespace ImageRecognition
                     uint target2Num = bestMatchesArr[target1Num];
                     Vector2Int target1Coords = targetKeypoints[target1Num];
                     Vector2Int target2Coords = keypoints[target2Num];
-                    Vector2Int target1Offset = target1Coords;
-                    Vector2Int target2Offset = target2Coords - origin;
-                    scale += (((float)target1Offset.x / (float)target2Offset.x) + ((float)target1Offset.y / (float)target2Offset.y)) / 2f;
+                    Vector2Int target1Offset = target1Coords - target1Center;
+                    Vector2Int target2Offset = target2Coords - target2Center;
+                    scale += (((float)target2Offset.x / (float)target1Offset.x) + ((float)target2Offset.y / (float)target1Offset.y)) / 2f;
                 }
                 scale /= bestMatchNum;
 
-                float pixelWidth = scale * bestMatch.xrReferenceImage.texture.width * Mathf.Pow(2, bestMatch.scalePower);
-                float pixelHeight = scale * bestMatch.xrReferenceImage.texture.height * Mathf.Pow(2, bestMatch.scalePower);
-
-                if (scale <= 0 || float.IsNaN(scale) || origin.x + pixelWidth >= viewWidth * 2 || origin.y + pixelHeight >= viewHeight * 2)
+                float targetWidth = bestMatch.xrReferenceImage.texture.width * Mathf.Pow(2, bestMatch.scalePower);
+                float targetHeight = bestMatch.xrReferenceImage.texture.height * Mathf.Pow(2, bestMatch.scalePower);
+                float pixelWidth = scale * targetWidth;
+                float pixelHeight = scale * targetHeight;
+                
+                if (scale <= 0 || float.IsNaN(scale) || pixelWidth >= viewWidth * 2 || pixelHeight >= viewHeight * 2)
                 {
                     return null;
                 }
 
+                Vector2Int origin = target2Center - new Vector2Int((int)(target1Center.x * scale), (int)(target1Center.y * scale));
+
+                
+                if (origin.x < -viewWidth || origin.y < -viewHeight || float.IsNaN(origin.x) || float.IsNaN(origin.y) || origin.x >= viewWidth || origin.y >= viewHeight)
+                {
+                    return null;
+                }
                 Camera cam;
                 if (secondaryCamera != null && secondaryCamera.isActiveAndEnabled)
                 {
@@ -504,20 +516,17 @@ namespace ImageRecognition
                     cam = primaryCamera;
                 }
 
+                Vector2 screenCenter = new Vector2(viewWidth / 2f, viewHeight / 2f);
+                Vector2 targetCenter = new Vector2(pixelWidth / 2f + origin.x, pixelHeight / 2f + origin.y);
+                float oppositePixels = (screenCenter-targetCenter).magnitude;
+                float pixelsToMeters = bestMatch.xrReferenceImage.size.x / pixelWidth;
+                float oppositeMeters = oppositePixels * pixelsToMeters;
 
-                float targetCenterX = pixelWidth / 2f + origin.x;
-                float targetCenterY = pixelHeight / 2f + origin.y;
-
-                float meters = bestMatch.xrReferenceImage.size.x;
-                float meters_per_pixel = meters / pixelWidth;
-
-                float opposite = pixelHeight / 2f * meters_per_pixel;
-                Vector3 leg1Direction = cam.ScreenPointToRay(new Vector3(origin.x, targetCenterY, 0)).direction;
-                Vector3 leg2Direction = cam.ScreenPointToRay(new Vector3(targetCenterX, targetCenterY, 0)).direction;
+                Vector3 leg1Direction = cam.ScreenPointToRay(new Vector3(screenCenter.x, screenCenter.y, 0)).direction;
+                Vector3 leg2Direction = cam.ScreenPointToRay(new Vector3(targetCenter.x, targetCenter.y, 0)).direction;
                 float angleDeg = Vector3.Angle(leg1Direction, leg2Direction);
                 float angleRad = angleDeg * Mathf.PI / 180;
-                float adjacent = opposite / Mathf.Tan(angleRad);
-                float depth = adjacent;
+                float depth = oppositeMeters / Mathf.Sin(angleRad);
 
                 if (depth <= 0 || float.IsNaN(depth) || depth > 100)
                 {
