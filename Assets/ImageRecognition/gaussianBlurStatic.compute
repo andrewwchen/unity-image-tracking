@@ -1,4 +1,6 @@
-﻿// Each #kernel tells which function to compile; you can have many kernels
+﻿// from https://github.com/G4ND44/computeShaderBlur
+
+// Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel HorzBlurCs
 #pragma kernel VertBlurCs
 

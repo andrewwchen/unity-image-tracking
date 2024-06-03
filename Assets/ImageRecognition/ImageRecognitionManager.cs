@@ -544,7 +544,6 @@ namespace ImageRecognition
 
         void Awake()
         {
-            Application.targetFrameRate = 16;
             blurHorID = blurShader.FindKernel("HorzBlurCs");
             blurVerID = blurShader.FindKernel("VertBlurCs");
 
